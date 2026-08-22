@@ -1,0 +1,14 @@
+# assignment brief — not published
+Assignment.txt
+
+# workspace
+*.code-workspace
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# node (only used for local preview / tooling, never shipped)
+node_modules/
+package-lock.json

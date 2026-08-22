@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Attention Timeline — every attention mechanism, in the order it actually appeared</title>
+<meta name="description" content="A chronological, honestly-argued timeline of attention mechanisms — from scaled dot-product attention in 2017 to DeepSeek sparse attention and gated linear memory in 2025. Every date verified against the paper or release. Every mechanism given both its pros and its cons.">
+<meta name="author" content="Tejaswi Vinnakota">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="The Attention Timeline">
+<meta property="og:description" content="Every attention mechanism in the order it was actually launched, each explained as an answer to the problem that existed at that moment — with honest trade-offs and verified dates.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128200;</text></svg>">
+</head>
+<body>
+
+<a class="skip" href="#timeline">Skip to the timeline</a>
+
+<!-- ====================================================================== -->
+<nav class="nav">
+  <div class="nav-in">
+    <span class="nav-brand">The Attention <span>Timeline</span></span>
+    <div class="nav-links">
+      <a href="#start">Start here</a>
+      <a href="#timeline-sec">Timeline</a>
+      <a href="#lab-mask">Masks</a>
+      <a href="#lab-kv">KV cache</a>
+      <a href="#lab-pos">Positions</a>
+      <a href="#compare">Compare</a>
+      <a href="#story">What it shows</a>
+      <a href="#sources">Sources</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ====================================================================== -->
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">A chronological history &middot; dates verified at source</div>
+    <h1>Attention was never wrong.<br>It was just <em>expensive</em>.</h1>
+    <p class="hero-lede">
+      Every mechanism on this page is somebody looking at that bill and trying to pay less of it.
+      They are laid out in the order they actually appeared — not the order they get taught, and not
+      grouped by family — because the order is the argument.
+    </p>
+
+    <div class="thesis">
+      <p>
+        In 2017 attention bought you something remarkable: every token could look at every other token,
+        <strong>exactly</strong>, in one step. The cost was quadratic compute and a key-value cache that grows
+        without limit. Everything since is a negotiation over that invoice.
+      </p>
+      <p>
+        Read the timeline top to bottom and you can watch the field change its mind. First it wants
+        <strong>exactness</strong>. Then it wants <strong>memory</strong> back. Then it wants <strong>length</strong>.
+        Then, having thrown memory away to get length, it goes back and builds memory again — on purpose this
+        time. You cannot see that in a list. You can only see it on a timeline, and once you see it you can
+        make a decent guess at what comes next.
+      </p>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="n" data-count="mechanisms">—</div><div class="l">mechanisms</div></div>
+      <div class="stat"><div class="n" data-count="span">—</div><div class="l">years covered</div></div>
+      <div class="stat"><div class="n" data-count="verified">—</div><div class="l">dates verified at source</div></div>
+      <div class="stat"><div class="n">5</div><div class="l">eras of changing its mind</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ====================================================================== -->
+<section id="start">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Start here</div>
+      <h2>The one you have to understand first</h2>
+      <p>
+        Nothing after 2017 makes sense without this, so it is worth being precise about what the original
+        mechanism actually does — and exactly where the money goes.
+      </p>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3>Scaled dot-product attention, in one breath</h3>
+        <p style="color:var(--ink-dim)">
+          Every token emits three vectors: a <b>query</b> (what am I looking for), a <b>key</b>
+          (what am I), and a <b>value</b> (what I will hand over if you pick me). Score every query against
+          every key with a dot product, divide by <code>&radic;d<sub>k</sub></code> so the numbers stay in a
+          range softmax can handle, softmax the row into a probability distribution, and take that weighted
+          average of the values.
+        </p>
+        <div class="mech-math">Attention(Q, K, V) = softmax( Q K&#7488; / &radic;d&#8342; ) V</div>
+        <p style="color:var(--ink-dim);margin-bottom:0">
+          That is the whole idea. It is content-addressed lookup, done softly and differentiably, with no
+          recurrence and nothing to unroll — which is precisely why it trains in parallel and why it took over.
+        </p>
+      </div>
+
+      <div class="panel">
+        <h3>And here is the invoice</h3>
+        <p style="color:var(--ink-dim)">Three separate costs, and they are worth keeping apart, because different mechanisms attack different ones:</p>
+        <div class="costs" style="flex-direction:column">
+          <div class="cost">
+            <div class="k">1. Training compute</div>
+            <div class="v">O(n&sup2;&middot;d)</div>
+            <div style="font-size:.84rem;color:var(--ink-dim);margin-top:6px">
+              Double the context, quadruple the work. This is what sparsity and linear attention attack.
+            </div>
+          </div>
+          <div class="cost">
+            <div class="k">2. Inference memory &amp; bandwidth</div>
+            <div class="v">KV cache = 2 &middot; L &middot; H &middot; d<sub>h</sub> per token</div>
+            <div style="font-size:.84rem;color:var(--ink-dim);margin-top:6px">
+              Read <i>in full for every single token generated</i>. This is what MQA, GQA and MLA attack, and
+              at generation time it dominates.
+            </div>
+          </div>
+          <div class="cost">
+            <div class="k">3. Length generalisation</div>
+            <div class="v">breaks past training length</div>
+            <div style="font-size:.84rem;color:var(--ink-dim);margin-top:6px">
+              Not a cost in FLOPs but in capability. This is what the positional-encoding family attacks.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:20px;border-color:var(--f-sparse)">
+      <h3 style="color:var(--f-sparse)">One distinction the rest of the page depends on</h3>
+      <p style="color:var(--ink-dim);margin-bottom:0">
+        The quadratic term and the KV cache are <b>different problems</b> and they peak at different times.
+        Quadratic compute hurts during <b>training</b> and during the <b>prefill</b> of a long prompt. The KV
+        cache hurts during <b>decoding</b>, one token at a time, where you are not compute-bound at all but
+        memory-bandwidth-bound. A mechanism that halves your FLOPs and leaves the cache alone will not make
+        your chatbot feel faster. This is the single most common way people mis-pick a mechanism, and it is
+        why the timeline below has two distinct threads running through it rather than one.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<section id="timeline-sec">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="kicker">The main event</div>
+      <h2>In the order they actually appeared</h2>
+      <p>
+        Sorted by first public appearance — the arXiv v1 submission date, or the dated release/post where
+        the idea genuinely arrived that way. Not by publication date, not by when the idea became popular,
+        and not by when it was taught. Click any card for the mechanics, the honest trade, and the citation.
+        Every date is checked against the paper itself; the <span style="color:var(--pro)">&check;</span>
+        tag on each card means somebody actually opened the source.
+      </p>
+    </div>
+
+    <div class="filters" id="filters"></div>
+    <div class="timeline" id="timeline">
+      <div class="panel"><p style="margin:0;color:var(--ink-faint)">Loading the timeline&hellip;</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<section id="lab-mask">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Lab 01</div>
+      <h2>What each mechanism actually looks at</h2>
+      <p>
+        This is a real toy attention computation, not a picture of one: random queries and keys, scaled dot
+        product, the mechanism's mask applied, then softmax. Row <i>i</i> is the token doing the looking;
+        column <i>j</i> is what it is allowed to look at. Brighter means more attention mass.
+      </p>
+    </div>
+
+    <div class="lab">
+      <div class="lab-controls panel">
+        <div class="ctl">
+          <label for="heat-mode">Mechanism</label>
+          <select id="heat-mode"></select>
+        </div>
+        <div class="ctl">
+          <label for="heat-n">Sequence length <span class="val" id="heat-n-val">48</span></label>
+          <input type="range" id="heat-n" min="16" max="96" step="4" value="48">
+        </div>
+        <div class="ctl">
+          <label for="heat-w">Window size <span class="val" id="heat-w-val">10</span></label>
+          <input type="range" id="heat-w" min="2" max="40" step="1" value="10">
+        </div>
+        <div class="ctl">
+          <label for="heat-k">Top-k budget <span class="val" id="heat-k-val">8</span></label>
+          <input type="range" id="heat-k" min="1" max="32" step="1" value="8">
+        </div>
+        <div class="ctl">
+          <label for="heat-sink">Sink tokens kept <span class="val" id="heat-sink-val">4</span></label>
+          <input type="range" id="heat-sink" min="0" max="8" step="1" value="4">
+        </div>
+        <p style="font-size:.82rem;color:var(--ink-faint);margin:0">
+          The dark-grey region is the causal triangle a mechanism <i>could</i> have used and chose not to.
+          That grey area is the saving. It is also, exactly, the information being discarded.
+        </p>
+      </div>
+
+      <div>
+        <div class="canvas-wrap">
+          <canvas id="heat-canvas" width="520" height="520" role="img"
+                  aria-label="Attention weight matrix for the selected mechanism"></canvas>
+          <div class="legend">
+            <span><i style="background:#7dd3fc"></i>high attention</span>
+            <span><i style="background:#3a5f7d"></i>low attention</span>
+            <span><i style="background:#161b27"></i>masked out (the saving)</span>
+            <span><i style="background:#0b0e14;border:1px solid #262d3d"></i>future — never visible</span>
+          </div>
+        </div>
+        <p class="canvas-cap" id="heat-note"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<section id="lab-kv">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Lab 02</div>
+      <h2>The bill nobody mentions until they deploy</h2>
+      <p>
+        Attention's famous cost is the quadratic one. The cost that actually decides whether you can serve a
+        model is the KV cache — and unlike FLOPs, it is read in full for every token you generate. Set a
+        model and a context length and watch why MQA, GQA and MLA were invented.
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="grid-3" style="margin-bottom:22px">
+        <div class="ctl">
+          <label for="kv-model">Model</label>
+          <select id="kv-model"></select>
+        </div>
+        <div class="ctl">
+          <label for="kv-seq">Context length <span class="val" id="kv-seq-val">32,768</span></label>
+          <input type="range" id="kv-seq" min="1024" max="1048576" step="1024" value="32768">
+        </div>
+        <div class="ctl">
+          <label for="kv-batch">Concurrent sequences <span class="val" id="kv-batch-val">1</span></label>
+          <input type="range" id="kv-batch" min="1" max="64" step="1" value="1">
+        </div>
+      </div>
+      <div class="ctl" style="max-width:260px;margin-bottom:22px">
+        <label for="kv-dtype">Cache precision</label>
+        <select id="kv-dtype">
+          <option value="2" selected>fp16 / bf16 (2 bytes)</option>
+          <option value="1">fp8 / int8 (1 byte)</option>
+          <option value="4">fp32 (4 bytes)</option>
+        </select>
+      </div>
+
+      <table class="kv">
+        <thead>
+          <tr>
+            <th>Scheme</th>
+            <th style="text-align:right">Per token</th>
+            <th style="text-align:right">Total cache</th>
+            <th style="text-align:right">vs. MHA</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="kv-body"></tbody>
+      </table>
+      <p class="canvas-cap" id="kv-note" style="margin-top:18px"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<section id="lab-pos">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Lab 03</div>
+      <h2>Where does the model learn <i>where</i> it is?</h2>
+      <p>
+        Attention itself is completely order-blind — shuffle the tokens and the maths is unchanged. Every
+        positional scheme is a different answer to that, and the context-extension family is a long argument
+        about what to do when you need a position the model has never seen.
+      </p>
+    </div>
+
+    <div class="panel">
+      <div class="grid-2" style="margin-bottom:20px">
+        <div class="ctl">
+          <label for="pos-mode">View</label>
+          <select id="pos-mode">
+            <option value="sinusoidal">Sinusoidal — position as a set of waves</option>
+            <option value="rope-decay">RoPE — long-term decay, and what raising the base does</option>
+            <option value="alibi">ALiBi — a straight-line penalty per head</option>
+            <option value="extension">Context extension — PI vs NTK-aware vs YaRN</option>
+          </select>
+        </div>
+        <div class="ctl">
+          <label for="pos-factor">Extension factor <span class="val" id="pos-factor-val">4&times;</span></label>
+          <input type="range" id="pos-factor" min="2" max="32" step="1" value="4">
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="pos-canvas" width="700" height="340" role="img"
+                aria-label="Positional encoding plot for the selected scheme"></canvas>
+      </div>
+      <p class="canvas-cap" id="pos-note" style="margin-top:16px"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<section id="compare">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Lab 04</div>
+      <h2>Put any three side by side</h2>
+      <p>
+        The most useful thing you can say about these mechanisms is not which is best. It is that a
+        mechanism which is right for a 2K chatbot can be flatly wrong for a 1M-token agent, and the reverse,
+        and that neither of those facts makes it a bad mechanism. Pick three and read across.
+      </p>
+    </div>
+    <div class="panel">
+      <div class="cmp-picks" id="cmp-picks"></div>
+      <div class="cmp-grid" id="cmp-table"></div>
+      <div class="verdict" id="cmp-verdict"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<section id="story">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">The point of the exercise</div>
+      <h2>What the timeline shows that a list cannot</h2>
+      <p>
+        Seven things became visible only once these were sorted by date. The first six are the shape of the
+        story; the last one is the part that lets you guess what comes next.
+      </p>
+    </div>
+
+    <div class="narrow" id="findings"></div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<section id="sources">
+  <div class="wrap">
+    <div class="sec-head narrow">
+      <div class="kicker">Show your working</div>
+      <h2>Every date, and where it came from</h2>
+      <p>
+        Dates are the easiest part of a page like this to get wrong and the easiest part to check, so here
+        is the whole table in one place. Unless noted otherwise, a date is the <b>arXiv v1 submission
+        date</b> read off the paper's abstract page — not the conference date, not the date it got popular.
+        Where a mechanism arrived as a blog post or a model release rather than a paper, that is stated
+        explicitly, because the provenance is part of the story.
+      </p>
+    </div>
+    <div class="src-wrap panel">
+      <table class="src">
+        <thead>
+          <tr><th>Date</th><th>Mechanism</th><th>Source document</th><th>ID</th><th>Date type</th><th>&check;</th></tr>
+        </thead>
+        <tbody id="src-body"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================================== -->
+<footer>
+  <div class="wrap">
+    <div class="fgrid">
+      <div>
+        <p><b style="color:var(--ink)">The Attention Timeline</b><br>
+        Built for ERA V5, Assignment 8.</p>
+      </div>
+      <div>
+        <p><b style="color:var(--ink)">Corrections welcome</b><br>
+        If a date here is wrong, that is a bug and I would like to know.<br>
+        Open an issue on the repo.</p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="js/app.js"></script>
+<script src="js/findings.js"></script>
+</body>
+</html>
