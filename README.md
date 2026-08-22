@@ -2,8 +2,8 @@
 
 ERA V5 — Assignment 8.
 
-**Live site:** _(deploy link goes here)_
-**Source:** this repository.
+**Live site:** https://tejaswivinnakota.github.io/ERAv5_Assignment8/
+**Source:** https://github.com/tejaswivinnakota/ERAv5_Assignment8
 
 A single-page site that walks through **42 attention mechanisms in strict chronological order of
 first public appearance**, 2017 to 2025. Every entry is framed the way the assignment asks: *what was
