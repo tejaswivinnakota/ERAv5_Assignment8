@@ -1,0 +1,11 @@
+# Static site: no build step, no dependencies. The repository root is published as-is.
+# Assignment.txt is gitignored, so it is not in the repo and cannot be published.
+
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/data/*.json"
+  [headers.values]
+    Cache-Control = "public, max-age=300"

@@ -2,7 +2,8 @@
 
 ERA V5 — Assignment 8.
 
-**Live site:** https://tejaswivinnakota.github.io/ERAv5_Assignment8/
+**Live site:** https://every-attention-mechanism.netlify.app/
+**Mirror:** https://tejaswivinnakota.github.io/ERAv5_Assignment8/ (GitHub Pages, same commit)
 **Source:** https://github.com/tejaswivinnakota/ERAv5_Assignment8
 
 A single-page site that walks through **42 attention mechanisms in strict chronological order of
